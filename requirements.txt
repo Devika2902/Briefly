@@ -1,0 +1,6 @@
+streamlit
+gnewsclient
+transformers
+newspaper3k
+spacy 
+annotated_text
