@@ -1,20 +1,24 @@
 import streamlit as st                      #Web App
 from gnewsclient import gnewsclient         # for fetching google news
 from newspaper import Article               # to obtain text from news articles
-from transformers import pipeline           # to summarize text
 import spacy                                # to obtain keyword
 from annotated_text import annotated_text   # to display keywords
+import requests                             
 
 
-# Load sshleifer/distilbart-cnn-12-6 model
-@st.cache(allow_output_mutation=True)
-def load_model():                           
-    model = pipeline('summarization')
-    return model
+# Load sshleifer/distilbart-cnn-12-6 model using Accelerated Inference API
+API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
+headers = {"Authorization": "Bearer api_GWvAcWrXIkIVYvBeyDyzJBOfGXhekPhFID"}
+
+
+def query(payload):
+	response = requests.post(API_URL, headers=headers, json=payload)
+	return response.json()
+
 
 data = gnewsclient.NewsClient(max_results=0) 
 
-
+st.cache(allow_output_mutation=True)
 # obtain urls and it's content
 def getNews(topic,location):                
     count=0
@@ -46,11 +50,11 @@ def getNews(topic,location):
 
  
  # Summarizes the content- minimum word limit 30 and maximum 60
-def getNewsSummary(contents,summarizer):   
+def getNewsSummary(contents):   
     summaries=[]     
     for content in contents:
-        minimum=len(content.split())
-        summaries.append(summarizer(content,max_length=60,min_length=min(30,minimum),do_sample=False,truncation=True)[0]['summary_text'])   
+        summary = query({"inputs":content})[0]["summary_text"]
+        summaries.append(summary) 
     return summaries
 
 
@@ -98,8 +102,7 @@ def DisplaySummary(titles,authors,summaries,keywords,urls):
         st.text("")
 
 
-def main(): 
-    summarizer=load_model()                 
+def main():               
     st.title('Briefly')
     with st.expander('Read trending news in less than 60 words...', expanded=True):
         with st.form(key='form1'):
@@ -110,7 +113,7 @@ def main():
     if submit_button:
         with st.spinner('Fetching news...'):            
             contents,titles,authors,urls=getNews(topic,location)
-            summaries=getNewsSummary(contents,summarizer)
+            summaries=getNewsSummary(contents)          
             keywords=generateKeyword(contents)
         DisplaySummary(titles,authors,summaries,keywords,urls)
 
