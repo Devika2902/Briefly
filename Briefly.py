@@ -8,7 +8,7 @@ import requests
 
 # Load sshleifer/distilbart-cnn-12-6 model using Accelerated Inference API
 API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
-headers = {"Authorization": "Bearer api_GWvAcWrXIkIVYvBeyDyzJBOfGXhekPhFID"}
+
 
 
 def query(payload):
