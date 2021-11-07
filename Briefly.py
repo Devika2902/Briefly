@@ -9,7 +9,7 @@ from annotated_text import annotated_text   # to display keywords
 # Load sshleifer/distilbart-cnn-12-6 model
 @st.cache(allow_output_mutation=True)
 def load_model():   
-    model = pipeline.from_pretrained("sshleifer/distilbart-cnn-12-6")                        
+    model = pipeline("summarization")                        
     return model
 
 data = gnewsclient.NewsClient(max_results=0) 
