@@ -1,24 +1,28 @@
 import streamlit as st                      #Web App
 from gnewsclient import gnewsclient         # for fetching google news
 from newspaper import Article               # to obtain text from news articles
+from transformers import pipeline           # to summarize text
 import spacy                                # to obtain keyword
 from annotated_text import annotated_text   # to display keywords
-import requests                             
 
 
-# Load sshleifer/distilbart-cnn-12-6 model using Accelerated Inference API
-API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
-
-
-
-def query(payload):
-	response = requests.post(API_URL, headers=headers, json=payload)
-	return response.json()
-
+# Load sshleifer/distilbart-cnn-12-6 model
+@st.cache(allow_output_mutation=True)
+def load_model():   
+    model = pipeline.from_pretrained("sshleifer/distilbart-cnn-12-6")                        
+    return model
 
 data = gnewsclient.NewsClient(max_results=0) 
 
-st.cache(allow_output_mutation=True)
+#faster method - inference api - 30k characters/mo
+#API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
+#API_KEY=os.getenv("API_KEY")
+#headers = {"Authorization": f"Bearer {API_KEY}"}
+#def query(payload):
+#	response = requests.post(API_URL, headers=headers, json=payload)
+#	return response.json()
+
+
 # obtain urls and it's content
 def getNews(topic,location):                
     count=0
@@ -48,13 +52,13 @@ def getNews(topic,location):
             continue 
     return contents,titles,authors,urls 
 
- 
+
  # Summarizes the content- minimum word limit 30 and maximum 60
-def getNewsSummary(contents):   
+def getNewsSummary(contents,summarizer):   
     summaries=[]     
     for content in contents:
-        summary = query({"inputs":content})[0]["summary_text"]
-        summaries.append(summary) 
+        minimum=len(content.split())
+        summaries.append(summarizer(content,max_length=60,min_length=min(30,minimum),do_sample=False,truncation=True)[0]['summary_text'])   
     return summaries
 
 
@@ -102,21 +106,22 @@ def DisplaySummary(titles,authors,summaries,keywords,urls):
         st.text("")
 
 
-def main():               
+def main(): 
+    summarizer=load_model()                 
     st.title('Briefly')
     with st.expander('Read trending news in less than 60 words...', expanded=True):
         with st.form(key='form1'):
             topic=st.selectbox('Category:',data.topics[2:]+["World"])
             location=st.selectbox('Location:',data.locations)        
             submit_button=st.form_submit_button() 
-                          
+
     if submit_button:
         with st.spinner('Fetching news...'):            
             contents,titles,authors,urls=getNews(topic,location)
-            summaries=getNewsSummary(contents)          
+            summaries=getNewsSummary(contents,summarizer)
             keywords=generateKeyword(contents)
         DisplaySummary(titles,authors,summaries,keywords,urls)
 
 
 if __name__ == '__main__':
-    main()
+    main() 
